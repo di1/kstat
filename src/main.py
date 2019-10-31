@@ -10,31 +10,34 @@ args = vars(ap.parse_args())
 
 c=AdminClient({"bootstrap.servers":args['server']})
 
-def print_config(config, depth):
-    print('%40s = %-50s  [%s,is:read-only=%r,default=%r,sensitive=%r,synonym=%r,synonyms=%s]' %
-          ((' ' * depth) + config.name, config.value, ConfigSource(config.source),
-           config.is_read_only, config.is_default,
-           config.is_sensitive, config.is_synonym,
-           ["%s:%s" % (x.name, ConfigSource(x.source))
-            for x in iter(config.synonyms.values())]))
+def format_config(config, depth):
+    return ("%s:%s"%(config.name, config.value))
+    # return ('%40s = %-50s  [%s,is:read-only=%r,default=%r,sensitive=%r,synonym=%r,synonyms=%s]' %
+    #       ((' ' * depth) + config.name, config.value, ConfigSource(config.source),
+    #        config.is_read_only, config.is_default,
+    #        config.is_sensitive, config.is_synonym,
+    #        ["%s:%s" % (x.name, ConfigSource(x.source))
+    #         for x in iter(config.synonyms.values())]))
 
 def describe_configs(a, topicName):
     """ describe configs """
     resources = [ConfigResource('topic', topicName)]
 
     fs = a.describe_configs(resources)
-
+    response = []
     # Wait for operation to finish.
     for res, f in fs.items():
         try:
             configs = f.result()
             for config in iter(configs.values()):
-                print_config(config, 1)
+                response.append(format_config(config, 1))
 
         except KafkaException as e:
             print("Failed to describe {}: {}".format(res, e))
         except Exception:
             raise
+    return ";".join(response)
+
 topics = []
 response = c.list_topics()
 for topic in response.topics:
@@ -45,19 +48,26 @@ for topic in response.topics:
     describe_configs(c, topic)
 
 
+def get_topic_detail(topic_name):
+    response = describe_configs(c, topic)
+    # print response
+    return response
+
 screen = curses.initscr()
 curses.noecho()
 curses.cbreak()
 curses.start_color()
 screen.keypad( 1 )
 curses.init_pair(1,curses.COLOR_BLACK, curses.COLOR_BLUE)
-highlightText = curses.color_pair( 1 )
+highlightText = curses.color_pair(1)
 normalText = curses.A_NORMAL
 screen.border( 0 )
 curses.curs_set( 0 )
 max_row = 10 #max number of rows
-box = curses.newwin( max_row + 2, 64, 1, 1 )
+box = curses.newwin( max_row + 2, 40, 1, 1 )
+# box_detail = curses.newwin( max_row + 2, 40, 42, 1 )
 box.box()
+# box_detail.box()
 
 
 row_num = len(topics)
@@ -80,6 +90,10 @@ screen.refresh()
 box.refresh()
 
 x = screen.getch()
+
+
+
+
 while x != 27:
     if x == curses.KEY_DOWN:
         if page == 1:
@@ -120,7 +134,7 @@ while x != 27:
     if x == ord( "\n" ) and row_num != 0:
         screen.erase()
         screen.border( 0 )
-        screen.addstr(14, 3, "YOU HAVE PRESSED '" + topics[position - 1] + "' ON POSITION " + str(position))
+        screen.addstr(14, 3, get_topic_detail(topics[position - 1]))
 
     box.erase()
     screen.border( 0 )
