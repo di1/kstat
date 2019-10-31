@@ -1,7 +1,11 @@
 from confluent_kafka.admin import AdminClient, ConfigResource, ConfigSource
 from confluent_kafka.cimpl import KafkaException
+import argparse
+ap = argparse.ArgumentParser()
+ap.add_argument("-s", "--server", action='store_true', required=False, help="Server host:port", default="localhost:9092")
+args = vars(ap.parse_args())
 
-c=AdminClient({"bootstrap.servers":"localhost:9092"})
+c=AdminClient({"bootstrap.servers":args['server']})
 
 def print_config(config, depth):
     print('%40s = %-50s  [%s,is:read-only=%r,default=%r,sensitive=%r,synonym=%r,synonyms=%s]' %
